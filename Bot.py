@@ -23,4 +23,12 @@ async def on_message(message):
 async def on_raw_reaction_add(payload):
     await defmodule.reactionrole(payload, bot.guilds)
 
+@bot.slash_command(name='roulette', description='make a number from 1 to 6')
+async def roulete(interaction, number, ammo):
+    await defs.roulette(interaction, number, ammo)
+
+@bot.slash_command(name='coin', description='fliping a coin')
+async def coin(interaction, flips):
+    await defs.coin(interaction, flips)
+
 bot.run('YOUR_TOKEN')

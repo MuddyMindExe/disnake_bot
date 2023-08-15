@@ -78,3 +78,52 @@ async def userdata(result, guilds):
             if result(user_id):
                 if user_id not in guild.members:
                     cursor.execute("DELETE FROM name WHERE user_id = ?", (user_id,))
+async def roulette(interaction, number, ammo):
+    botnums = []
+    user_id = interaction.author.id
+    if number.isdigit():
+        if 6 >= int(ammo) >= 1:
+                i = 0
+                while i < int(ammo):
+                    botnums.append(random.randint(1, 6))
+                    i += 1
+                for el in botnums:
+                    while botnums.count(el) > 1:
+                        botnums.remove(el)
+                        new_num = random.randint(1, 6)
+                        while new_num in botnums:  # Генерировать новое число, чтобы избежать дубликатов
+                            new_num = random.randint(1, 6)
+                        botnums.append(new_num)
+                if int(number) in botnums:
+                    await checklvl(interaction.author.id, interaction)
+                    if ammo == 1:
+                        await interaction.response.send_message(f'I have made a number {str(number)}. I won!')
+                    else:
+                        await interaction.response.send_message(f'I have made a numbers {str(", ".join(str(num) for num in sorted(botnums)))}. I won!')
+                    cursor.execute("UPDATE levels SET user_xp = user_xp - ? WHERE user_id = ?", (30 * ammo, user_id,))
+                    cursor.execute("SELECT user_xp FROM levels WHERE user_id = ?", (user_id, ))
+                    user_xp = cursor.fetchone()
+                    if user_xp < 0:
+                        cursor.execute("UPDATE levels SET user_xp = ? WHERE user_id = ?", (0, user_id, ))
+                    conn.commit()
+                elif int(number) >= 7:
+                    await interaction.response.send_message('Make a number from 1 to 6!')
+                else:
+                    await checklvl(interaction.author.id, interaction)
+                    if ammo == 1:
+                        await interaction.response.send_message(f'I have made number: {botnums[0]}. You won and earn 15xp!')
+                    else:
+                        await interaction.response.send_message(f'I have made numbers {str(", ".join(str(num) for num in sorted(botnums)))}. You won and earn 15xp!')
+                    cursor.execute("UPDATE levels SET user_xp = user_xp + ? WHERE user_id = ?", (12 * ammo, user_id,))
+                    conn.commit()
+        else:
+            await interaction.response.send_message('Makke a number from 1 to 6')
+    else:
+        await interaction.response.send_message('Enter a number!')
+
+async def coin(interaction, flips):
+    options = ['Eagle', 'Tails']
+    if int(flips) != 1:
+        await interaction.response.send_message(f"Results: {', '.join(random.choice(options) for i in range(int(flips)))}")
+    else:
+        await interaction.response.send_message(f"Result: {random.choice(options)}\n")
