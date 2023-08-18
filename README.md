@@ -23,7 +23,7 @@ Methods:
 ```
 message
 ```
-# IN_RAW_REACTIOIN_ADD
+# ON_RAW_REACTIOIN_ADD
 ```py
 def on_raw_reaction_add
 #Called when an emoji has been used on message.
