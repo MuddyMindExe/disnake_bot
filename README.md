@@ -49,7 +49,7 @@ As first, this finction creating a list of users that are on server and checks a
 If user is in server but has no personal record in db file, bot creates this record, gives to user the role and continues to work with user. 
 Elsif user has a record, but he is not on server, the record getting deleted bu bot. 
 And if user has a record and he is on server, he just gets the role. If user already has the role, bot does not looks for him in db file to not waste time.
-# reactiinrole
+# reactionrole
 This  function called when on_raw_reaction_add got called. If the message the emoji was used on is a target_message, user gets the role.
 # onmessage
 This function called after every users message. After every message user gets 3 xp and its immediately adds to amount xp he already has.
