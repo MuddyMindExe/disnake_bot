@@ -7,12 +7,13 @@ he need to get a rank up. After every rank uo bot will send a congratulations to
 - Has moderator functions in moder.py. It means, that it will check each message for
 banned words and punnish users for using them. Or encourage.
 - Gives a role if user used an emoji on message. You can use it to give users nececery roles when they join the server only by leaving an emoji on message.
-
+# ON_READY
 ```py
 def on_ready
 #Called when the client is done preparing the data received from Discord.
 #In my code after bot login in it calls func named 'userdata
 ```
+# ON_MESSAGE
 ```py
 def on_message
 #Called when server member writes a messagge in channel bot have rights to read
@@ -22,6 +23,7 @@ Methods:
 ```
 message
 ```
+# IN_RAW_REACTIOIN_ADD
 ```py
 def on_raw_reaction_add
 #Called when an emoji has been used on message.
