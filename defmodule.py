@@ -32,13 +32,14 @@ class SQL:
                 return cursor.fetchone()
 
 
+sql = SQL()
+
+
 class LVL:
     def xpadd(self, user_id):
         xp = 3
-        with sqlite3.connect('levels.db') as conn:
-            cursor = conn.cursor()
-            cursor.execute('UPDATE levels SET user_xp = user_xp + ? WHERE user_id = ?', (xp, user_id))
-
+        sql.database('UPDATE levels SET user_xp = user_xp + ? WHERE user_id = ?', params=(xp, user_id, ))
+                     
     def secret(self, message):
         if message.content.startswith('Meine Ehre heißt Treue!'):
             member = message.author
@@ -51,24 +52,23 @@ class LVL:
             await member.remove_roles(role)
 
     def lvl(self, message, user_id):
-        with sqlite3.connect('levels.db') as conn:
-            cursor = conn.cursor()
-            cursor.execute('SELECT user_lvl, user_xp, xp_needed FROM levels WHERE user_id = ?', (user_id,))
-            result = cursor.fetchone()
-            if result is not None:
-                user_lvl, user_xp, xp_needed = result
-                if user_xp >= xp_needed:
-                    user_lvl += 1
-                    user_xp = 0
-                    xp_needed += 60
-                    cursor.execute('UPDATE levels SET user_lvl = ?, user_xp = ?, xp_needed = ? WHERE user_id = ?',
-                                   (user_lvl, user_xp, xp_needed, user_id))
-                    await message.channel.send(
-                        '<@' + str(user_id) + '> ' + 'Твой уровень поднят до ' + str(user_lvl))
+        sql.database('SELECT user_lvl, user_xp, xp_needed FROM levels WHERE user_id = ?', 
+                     params=(user_id,), result='one')
+        result = cursor.fetchone()
+        if result is not None:
+            user_lvl, user_xp, xp_needed = result
+            if user_xp >= xp_needed:
+                user_lvl += 1
+                user_xp = 0
+                xp_needed += 60
+                sql.database('UPDATE levels SET user_lvl = ?, user_xp = ?, xp_needed = ? WHERE user_id = ?', 
+                             params=(user_lvl, user_xp, xp_needed, user_id))
+                await message.channel.send(
+                    '<@' + str(user_id) + '> ' + 'Твой уровень поднят до ' + str(user_lvl))
 
 
 level = LVL()
-sql = SQL()
+
 
 def is_record_exists(user_id):
     result = sql.database(f'SELECT * FROM levels WHERE user_id = {user_id}', None, 'all')
