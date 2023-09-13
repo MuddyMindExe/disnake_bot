@@ -1,75 +1,109 @@
 import disnake
-import logging
 import asyncio
 import sqlite3
-import moder
+import banned
+import random
 from disnake.ext import commands
 
 intents = disnake.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-conn = sqlite3.connect('DB file location')
-cursor = conn.cursor()
+with sqlite3.connect('levels.db') as conn:
+    cursor = conn.cursor()
+    cursor.execute(""" CREATE TABLE IF NOT EXISTS levels (
+        user_id TEXT,
+        user_lvl INTEGER DEFAULT 0,
+        user_xp INTEGER DEFAULT 0,
+        xp_needed INTEGER DEFAULT 90
+        )""")
 
-#change all 'name' to name of your table
-cursor.execute(""" CREATE TABLE IF NOT EXISTS name ( 
-    user_id TEXT,
-    user_lvl INTEGER,
-    user_xp INTEGER,
-    xp_needed INTEGER
-    )""")
+
+class SQL:
+    def database(self, query, params=None, result=None):
+        with sqlite3.connect('levels.db') as conn:
+            cursor = conn.cursor()
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
+            if result == 'all':
+                return cursor.fetchall
+            elif result == 'one':
+                return cursor.fetchone()
+
+
+class LVL:
+    def xpadd(self, user_id):
+        xp = 3
+        with sqlite3.connect('levels.db') as conn:
+            cursor = conn.cursor()
+            cursor.execute('UPDATE levels SET user_xp = user_xp + ? WHERE user_id = ?', (xp, user_id))
+
+    def secret(self, message):
+        if message.content.startswith('Meine Ehre heißt Treue!'):
+            member = message.author
+            guild = bot.get_guild(message.guild.id)
+            roleid = 1133474549791469618
+            role = guild.get_role(roleid)
+            await member.add_roles(role)
+            await message.channel.send('Так держать, боец!')
+            await asyncio.sleep(1800)
+            await member.remove_roles(role)
+
+    def lvl(self, message, user_id):
+        with sqlite3.connect('levels.db') as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT user_lvl, user_xp, xp_needed FROM levels WHERE user_id = ?', (user_id,))
+            result = cursor.fetchone()
+            if result is not None:
+                user_lvl, user_xp, xp_needed = result
+                if user_xp >= xp_needed:
+                    user_lvl += 1
+                    user_xp = 0
+                    xp_needed += 60
+                    cursor.execute('UPDATE levels SET user_lvl = ?, user_xp = ?, xp_needed = ? WHERE user_id = ?',
+                                   (user_lvl, user_xp, xp_needed, user_id))
+                    await message.channel.send(
+                        '<@' + str(user_id) + '> ' + 'Твой уровень поднят до ' + str(user_lvl))
+
+
+level = LVL()
+sql = SQL()
+
+def is_record_exists(user_id):
+    result = sql.database(f'SELECT * FROM levels WHERE user_id = {user_id}', None, 'all')
+    return len(result) > 0
+
+
 async def onmessage(message, user_id):
-    await moder.on_message(message)  # <- checks on banned words
-    xp = 3
-    cursor.execute('UPDATE name SET user_xp = user_xp + ? WHERE user_id = ?', (xp, user_id)) # <- updates user_xp after every message
-    cursor.execute('SELECT user_lvl, user_xp, xp_needed FROM name WHERE user_id = ?', (user_id,))
-    result = cursor.fetchone()
-    user_lvl, user_xp, xp_needed = result
-    if user_xp >= xp_needed: # <- updates user_lvl if user_xp >= xp_needed
-        user_lvl += 1
-        user_xp = 0
-        xp_needed += 60
-        cursor.execute('UPDATE name SET user_lvl = ?, user_xp = ?, xp_needed = ? WHERE user_id = ?',
-                       (user_lvl, user_xp, xp_needed, user_id))
-        await message.channel.send('<@' + str(message.author.id) + '> ' + 'Your new lvl is now - ' + str(user_lvl))
-    conn.commit()
-    if message.content.startswith('Messagge'): #gives user special role for 30 min if he writes special message
-        member = message.author
-        guild = bot.get_guild(message.guild.id)
-        roleid = #role id as integer
-        role = guild.get_role(roleid)
-        await member.add_roles(role)
-        await message.channel.send('messagge that bot will send')
-        await asyncio.sleep(1800)
-        await member.remove_roles(role)
+    await banned.on_message(message)
+    level.xpadd(user_id)
+    level.lvl(message, message.author.id)
+    level.secret(message)
+
 
 async def reactionrole(payload, guilds):
     for guild in guilds:
-        target_message_id = #message_id as integer
+        target_message_id = 1126566717032771675
         if payload.message_id == target_message_id:
             member = guild.get_member(payload.user_id)
-            target_emoji_id = #emoji_id as integer
+            target_emoji_id = 1126568092898705519
             if payload.emoji.id == target_emoji_id:
-                role_id = #role id as integer
+                role_id = 1126562964355416125
                 role = guild.get_role(role_id)
                 await member.add_roles(role)
 
-def is_record_exists(user_id): #< - selects all user_ids from table
-    cursor.execute(f'SELECT * FROM name WHERE user_id = {user_id}')
-    result = cursor.fetchall()
-    return result is not None
 
 async def userdata(result, guilds):
     for guild in guilds:
         for member in guild.members:
             user_id = member.id
-            role_id = #role id as integer
+            role_id = 1134808592873177148
             role = guild.get_role(role_id)
             if role not in member.roles:
                 if not result(user_id):
-                    cursor.execute("SELECT user_id FROM name WHERE user_id = ?", (user_id,))
-                    cursor.execute("INSERT INTO name (user_id) VALUES (?)", (user_id,))
-                    conn.commit()
+                    sql.database("SELECT user_id FROM levels WHERE user_id = ?", params=(user_id, ))
+                    sql.database("INSERT INTO levels (user_id) VALUES (?)", params=(user_id, ))
                     await member.add_roles(role)
                 else:
                     await member.add_roles(role)
@@ -77,7 +111,9 @@ async def userdata(result, guilds):
                 continue
             if result(user_id):
                 if user_id not in guild.members:
-                    cursor.execute("DELETE FROM name WHERE user_id = ?", (user_id,))
+                    sql.database("DELETE FROM levels WHERE user_id = ?", params=(user_id, ))
+
+
 async def roulette(interaction, number, ammo):
     botnums = []
     user_id = interaction.author.id
@@ -95,35 +131,35 @@ async def roulette(interaction, number, ammo):
                             new_num = random.randint(1, 6)
                         botnums.append(new_num)
                 if int(number) in botnums:
-                    await checklvl(interaction.author.id, interaction)
+                    level.lvl(interaction, interaction.author.id)
                     if ammo == 1:
-                        await interaction.response.send_message(f'I have made a number {str(number)}. I won!')
+                        await interaction.response.send_message(f'Я загадал число {str(number)}. Я победил!')
                     else:
-                        await interaction.response.send_message(f'I have made a numbers {str(", ".join(str(num) for num in sorted(botnums)))}. I won!')
-                    cursor.execute("UPDATE levels SET user_xp = user_xp - ? WHERE user_id = ?", (30 * ammo, user_id,))
-                    cursor.execute("SELECT user_xp FROM levels WHERE user_id = ?", (user_id, ))
+                        await interaction.response.send_message(f'Я загадал числа {str(", ".join(str(num) for num in sorted(botnums)))}. Я победил!')
+                    sql.database("UPDATE levels SET user_xp = user_xp - ? WHERE user_id = ?",
+                                 params=(30 * ammo, user_id, ))
+                    sql.database("SELECT user_xp FROM levels WHERE user_id = ?",
+                                 params=(user_id, ), result='one')
                     user_xp = cursor.fetchone()
                     if user_xp < 0:
-                        cursor.execute("UPDATE levels SET user_xp = ? WHERE user_id = ?", (0, user_id, ))
-                    conn.commit()
+                        sql.database("UPDATE levels SET user_xp = ? WHERE user_id = ?", params=(0, user_id, ))
                 elif int(number) >= 7:
-                    await interaction.response.send_message('Make a number from 1 to 6!')
+                    await interaction.response.send_message('Загадайте число от 1 до 6!')
                 else:
-                    await checklvl(interaction.author.id, interaction)
+                    level.lvl(interaction, interaction.author.id)
                     if ammo == 1:
-                        await interaction.response.send_message(f'I have made number: {botnums[0]}. You won and earn 15xp!')
+                        await interaction.response.send_message(
+                            f'Я загадал число {botnums[0]}. Ты победил и получаешь 15 xp!')
                     else:
-                        await interaction.response.send_message(f'I have made numbers {str(", ".join(str(num) for num in sorted(botnums)))}. You won and earn 15xp!')
-                    cursor.execute("UPDATE levels SET user_xp = user_xp + ? WHERE user_id = ?", (12 * ammo, user_id,))
-                    conn.commit()
+                        await interaction.response.send_message(f'Я загадал числа {str(", ".join(str(num) for num in sorted(botnums)))}. Ты победил и получаешь 15 xp!')
         else:
-            await interaction.response.send_message('Makke a number from 1 to 6')
+            await interaction.response.send_message('Загадайте число от 1 до 6!')
     else:
-        await interaction.response.send_message('Enter a number!')
+        await interaction.response.send_message('Введи число!')
 
 async def coin(interaction, flips):
-    options = ['Eagle', 'Tails']
+    options = ['орел', 'решка']
     if int(flips) != 1:
-        await interaction.response.send_message(f"Results: {', '.join(random.choice(options) for i in range(int(flips)))}")
+        await interaction.response.send_message(f"Результаты: {', '.join(random.choice(options) for i in range(int(flips)))}")
     else:
-        await interaction.response.send_message(f"Result: {random.choice(options)}\n")
+        await interaction.response.send_message(f"Результат: {random.choice(options)}\n")
