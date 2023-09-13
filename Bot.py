@@ -1,33 +1,36 @@
 import disnake
-import logging
-import asyncio
-import sqlite3
-import moder
-import defmodule
+import defs
 from disnake.ext import commands
 
-bot = commands.Bot(command_prefix='/', intents=disnake.Intents.all())
+
+bot = commands.Bot(command_prefix='/', intents=disnake.Intents.all(), test_guilds=[1073728801344852009])
+
+
 @bot.event
 async def on_ready():
     print(f'We have logged in as {bot.user}')
-    await defmodule.userdata(defs.is_record_exists, bot.guilds)
+    await defs.userdata(defs.is_record_exists, bot.guilds)
+
 
 @bot.event
 async def on_message(message):
     if message.author == bot.user:
         return
     else:
-     await defmodule.onmessage(message, message.author.id)
+        await defs.onmessage(message, message.author.id)
+
 
 @bot.event
 async def on_raw_reaction_add(payload):
-    await defmodule.reactionrole(payload, bot.guilds)
+    await defs.reactionrole(payload, bot.guilds)
 
-@bot.slash_command(name='roulette', description='make a number from 1 to 6')
+
+@bot.slash_command(name='рулетка', description='загадай число от 1 до 6')
 async def roulete(interaction, number, ammo):
     await defs.roulette(interaction, number, ammo)
 
-@bot.slash_command(name='coin', description='fliping a coin')
+
+@bot.slash_command(name='монетка', description='подбрасывание монетки')
 async def coin(interaction, flips):
     await defs.coin(interaction, flips)
 
